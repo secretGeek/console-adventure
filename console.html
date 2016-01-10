@@ -123,13 +123,20 @@
 /**********************************************************************************************************************************************************
 */
 (function(exports) { /*** IIFE start **********************************************************************************************/
-
+  'use strict';
+    
+  var styles = {
+    big: "font-size:150%;color:red;font-weight:bold",
+    mono: "font-family:Menlo,Consolas,monospace;color:slateblue"
+  };
+  
 function start() {
- c("*****************************************");
- c("*** Hi! Glad you made it down here.");
- c("*** Welcome to a console.log() adventure.");
- c("*****************************************");
- console.error("Remember: View source is cheating.");
+ console.log("%c\
+********************************************\r\n\
+*** Hi! Glad you made it down here.       **\r\n\
+*** Welcome to a console.log() adventure. **\r\n\
+********************************************", styles.mono);
+ console.error("Remember: View source is cheating (using reflection is OK, but it won't help you though).");
  console.info("Use Help() for help at any time.");
  init();
  c(say());
@@ -139,7 +146,7 @@ function start() {
 function init() { //HEY! no peeking.
  return __init();
 }
-var movecount = 0;
+var movecount = 0, playerState;
 function __init() {
   movecount = 0;
   mapnum = 0; // we start on the first map.
@@ -154,7 +161,7 @@ function __init() {
 function RegisterCommands(fnCommand, synonyms) {
   synonyms.split(',').forEach(function(cmd) {
     if (cmd in exports)
-      console.error("%cCommand %s is already defined", "font-size:150%;color:red;font-weight:bold", cmd, fnCommand);
+      console.error("%cCommand %s is already defined", styles.big, cmd, fnCommand);
     exports[cmd] = function() { //HEY! No peaking!
       return fnCommand.apply(this, arguments);
     };
