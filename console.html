@@ -132,22 +132,21 @@
   
 function start() {
  console.log("%c\
-********************************************\r\n\
-*** Hi! Glad you made it down here.       **\r\n\
-*** Welcome to a console.log() adventure. **\r\n\
-********************************************", styles.mono);
+*********************************************\r\n\
+*** Hi! Glad you made it down here.       ***\r\n\
+*** Welcome to a console.log() adventure. ***\r\n\
+*********************************************\r\n\
+ ", styles.mono);
  console.error("Remember: View source is cheating (using reflection is OK, but it won't help you though).");
- console.info("Use Help() for help at any time.");
+ console.info("Type [Help] for help at any time (commands are provided between [], so don't type the brackets).");
  init();
  c(say());
- 
+
 }
 
-function init() { //HEY! no peeking.
- return __init();
-}
 var movecount = 0, playerState;
-function __init() {
+
+function init() {
   movecount = 0;
   mapnum = 0; // we start on the first map.
   here = [9,5]; //x,y. Our starting position.
@@ -162,9 +161,9 @@ function RegisterCommands(fnCommand, synonyms) {
   synonyms.split(',').forEach(function(cmd) {
     if (cmd in exports)
       console.error("%cCommand %s is already defined", styles.big, cmd, fnCommand);
-    exports[cmd] = function() { //HEY! No peaking!
+    Object.defineProperty(exports, cmd, { get:function() { //HEY! No peaking!
       return fnCommand.apply(this, arguments);
-    };
+    }});
   }); 
 }
 
@@ -183,10 +182,15 @@ RegisterCommands(Fight,    'Fight,fight,F,f');
 RegisterCommands(Up,       'Up,up');
 RegisterCommands(Eat,      'Eat,eat,EAT');
 RegisterCommands(Help,     'Help,help,HELP,H,h');
+RegisterCommands(reset,    'Reset,reset,Restart,restart');
 
 // VERBS!!!
 function Help() {
-  return "General commands are: n(), s(), e(), w() for North, South, East, West, also:\r\nl() for Look, t() for Take, u() for Use,\r\nsp() for Speak, i() for Inventory, me() for player state, f() for fight.\r\nAnd h() for Help.\r\nFor *special* cheats, press Ctrl-F4.";
+  return "\
+General commands are (without the []): [n], [s], [e], [w] for [North], [South], [East], [West].\r\n\
+Also: [l] for [Look], [t] for [Take], [u] for [Use], [sp] for [Speak], [i] for [Inventory],\r\n\
+[me] for player state, [f] for [fight], [r] for [Restart] and [h] for [Help].\r\n\
+For *special* cheats, press Ctrl-F4/Cmd-W.";
 }
 
 function Eat() {
@@ -208,10 +212,10 @@ function Look() {
   //c(cell);
   switch(cell) {
     
-	case "H" : return "The house is weathered, and appears abandoned. The front door is partially off its hinges. You could easily Enter().";
-	case "V" : return "Cool air blows from the cave. The entrance is large enough that you can Enter(). You can move " + Possibilities();
-	case "2" : return "There is a rope you can climb Up(). It looks sturdy enough to hold your weight.";	
-    case "k" : return "This kitchen contains one of those fancy Magic Amulet Receptacle Devices. You could try to Use() it, I guess.";	
+	case "H" : return "The house is weathered, and appears abandoned. The front door is partially off its hinges. You could easily [Enter].";
+	case "V" : return "Cool air blows from the cave. The entrance is large enough that you can [Enter]. You can move " + Possibilities();
+	case "2" : return "There is a rope you can climb [Up]. It looks sturdy enough to hold your weight.";	
+    case "k" : return "This kitchen contains one of those fancy Magic Amulet Receptacle Devices. You could try to [Use] it, I guess.";	
     case "r" : 
     {
         c("The room contains a bath, a sink, and a toilet that runs continuously.");
@@ -228,7 +232,7 @@ function Look() {
   return "";
 }
 function Take(){
-  message = "There is nothing to take."
+  var message = "There is nothing to take."
   var cell = maps[mapnum][here[1]][here[0]];
   //c(cell);
   switch(cell) {
@@ -251,7 +255,7 @@ function Take(){
   return message;
 }
 function Use(x) {
-  message = "You can't use that here.";
+  var message = "You can't use that here.";
   var cell = maps[mapnum][here[1]][here[0]];
   //c(cell);
   switch(cell) {
@@ -268,6 +272,7 @@ function Use(x) {
   return message;
 }
 function reset() {
+  location.reload(); //console acts weird on reset (Safari), and this works...
  console.clear();
  document.body.style.background = "#FFF";
  document.body.innerHTML ="";
@@ -293,7 +298,7 @@ function win(n) {
               if (movecount < 20) {
                 message = " (with only a little bit of cheating)";
               }
-              document.body.innerHTML = '<div class="win">You won in ' + movecount + ' moves.' + message + '</div><p><code>reset()</code> to play again.</p>';
+              document.body.innerHTML = '<div class="win">You won in ' + movecount + ' moves.' + message + '</div><p><code>[reset]</code> to play again.</p>';
             init();} break;
   }
   if (n < 11) {
@@ -356,14 +361,14 @@ function move(x,y) {
 var amulet=true;
 var gold=true;
 function elfhut() {
-  message = "A clearing in the forest, with an abandoned elf hut.";
+  var message = "A clearing in the forest, with an abandoned elf hut.";
   if (amulet == true) {
     message += "\r\nAn amulet lies on the floor.";
   }
   return message;
 }
 function horde() {
-  message = "An empty cavern.";
+  var message = "An empty cavern.";
   if (gold == true) {
     message = "There is a horde of treasure. Gold coins, goblets, trinkets.";
   }
@@ -386,7 +391,7 @@ function say() {
 	case "r" : return "You are in a bedroom. You can move " + Possibilities() + ".";
 	case "b" : return "You are in a bathroom. You can move " + Possibilities() + ".";
 	case "y" : return "You are in a foyer. You can move " + Possibilities() + ".";
-	case "a" : return "Stairs lead up to an attic. You can move Up(), " + Possibilities() + ".";
+	case "a" : return "Stairs lead up to an attic. You can move [Up], " + Possibilities() + ".";
 	case "0" : return "You are in a deep dark tunnel. Feeling with your fingers you find you can move " + Possibilities() + ".";
 	case "1" : return "Somehow it is even darker here. You feel yourself going cray cray. The one thing you still have is your sense of direction. You can move " + Possibilities() + ".";
 	case "2" : return "You are in a wide open cavern. Bones litter the floor. You can move " + Possibilities() + ".";
@@ -434,10 +439,10 @@ function Enter() {
 
 function Possibilities() {
   var poss = [];
-  if (maps[mapnum][here[1]-1][here[0]] != ".") poss[poss.length] = "North()";
-  if (maps[mapnum][here[1]+1][here[0]] != ".") poss[poss.length] = "South()";
-  if (maps[mapnum][here[1]][here[0]+1] != ".") poss[poss.length] = "East()";
-  if (maps[mapnum][here[1]][here[0]-1] != ".") poss[poss.length] = "West()";
+  if (maps[mapnum][here[1]-1][here[0]] != ".") poss[poss.length] = "[North]";
+  if (maps[mapnum][here[1]+1][here[0]] != ".") poss[poss.length] = "[South]";
+  if (maps[mapnum][here[1]][here[0]+1] != ".") poss[poss.length] = "[East]";
+  if (maps[mapnum][here[1]][here[0]-1] != ".") poss[poss.length] = "[West]";
   return replaceLast(poss.join(", "), ", ", " and "); //sometimes ' or ' would be better... ah well.
 }
 function North() {
