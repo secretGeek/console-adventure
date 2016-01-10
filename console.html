@@ -122,6 +122,8 @@
 /*********
 /**********************************************************************************************************************************************************
 */
+(function(exports) { /*** IIFE start **********************************************************************************************/
+
 function start() {
  c("*****************************************");
  c("*** Hi! Glad you made it down here.");
@@ -149,165 +151,31 @@ function __init() {
 }
 
 // Synonyms for our verbs...
-function north() {
- return North(); // *** HINT *** use 'north()', not just 'north' as a command.
+function RegisterCommands(fnCommand, synonyms) {
+  synonyms.split(',').forEach(function(cmd) {
+    if (cmd in exports)
+      console.error("%cCommand %s is already defined", "font-size:150%;color:red;font-weight:bold", cmd, fnCommand);
+    exports[cmd] = function() { //HEY! No peaking!
+      return fnCommand.apply(this, arguments);
+    };
+  }); 
 }
-function N() {
- return North(); // *** HINT *** use 'N()', not just 'N' as a command.
-}
-function n() {
- return North(); // *** HINT *** use 'n()', not just 'n' as a command.
-}
-function south() {
- return South(); // *** HINT *** use 'south()', not just 'south' as a command.
-}
-function S() {
- return South(); // *** HINT *** use 'S()', not just 'S' as a command.
-}
-function s() {
- return South(); // *** HINT *** use 's()', not just 's' as a command.
-}
-function west() {
- return West(); // *** HINT *** use 'west()', not just 'west' as a command.
-}
-function W() {
- return West(); // *** HINT *** use 'W()', not just 'W' as a command.
-}
-function w() {
- return West(); // *** HINT *** use 'w()', not just 'w' as a command.
-}
-function east() {
- return East(); // *** HINT *** use 'east()', not just 'east' as a command.
-}
-function E() {
- return east(); // *** HINT *** use 'E()', not just 'e' as a command.
-}
-function e() {
- return East(); // *** HINT *** use 'e()', not just 'e' as a command.
-}
-function enter() {
- return Enter(); // *** HINT *** use 'enter()', not just 'enter' as a command.
-}
-function en() {
- return Enter(); // *** HINT *** use 'en()', not just 'en' as a command.
-}
-function En() {
- return Enter(); // *** HINT *** use 'En()', not just 'En' as a command.
-}
-function ent() {
- return Enter(); // *** HINT *** use 'ent()', not just 'ent' as a command.
-}
-function Ent() {
- return Enter(); // *** HINT *** use 'Ent()', not just 'Ent' as a command.
-}
-function L() {
- return Look(); // *** HINT *** use 'L()', not just 'L' as a command.
-}
-function l() {
- return Look(); // *** HINT *** use 'l()', not just 'l' as a command.
-}
-function look() {
- return Look(); // *** HINT *** use 'look()', not just 'look' as a command.
-}
-function T() {
- return Take(); // *** HINT *** use 'T()', not just 'T' as a command.
-}
-function t() {
- return Take(); // *** HINT *** use 't()', not just 't' as a command.
-}
-function take() {
- return Take(); // *** HINT *** use 'take()', not just 'take' as a command.
-}
-function U() {
- return Use(); // *** HINT *** use 'U()', not just 'U' as a command.
-}
-function u() {
- return Use(); // *** HINT *** use 'u()', not just 'u' as a command.
-}
-function use() {
- return Use(); // *** HINT *** use 'use()', not just 'use' as a command.
-}
-function SP() {
- return Speak(); // *** HINT *** use 'SP()', not just 'SP' as a command.
-}
-function sp() {
- return Speak(); // *** HINT *** use 'sp()', not just 'sp' as a command.
-}
-function Sp() {
- return Speak(); // *** HINT *** use 'Sp()', not just 'Sp' as a command.
-}
-function speak() {
- return Speak(); // *** HINT *** use 'speak()', not just 'speak' as a command.
-}
-function I() {
- return Inventory(); // *** HINT *** use 'I()', not just 'I' as a command.
-}
-function i() {
- return Inventory(); // *** HINT *** use 'i()', not just 'i' as a command.
-}
-function Inv() {
- return Inventory(); // *** HINT *** use 'Inv()', not just 'Inv' as a command.
-}
-function inv() {
- return Inventory(); // *** HINT *** use 'inv()', not just 'inv' as a command.
-}
-function inventory() {
- return Inventory(); // *** HINT *** use 'inventory()', not just 'inventory' as a command.
-}
-function M() {
- return Me(); // *** HINT *** use 'M()', not just 'M' as a command.
-}
-function m() {
- return Me(); // *** HINT *** use 'm()', not just 'm' as a command.
-}
-function me() {
- return Me(); // *** HINT *** use 'me()', not just 'me' as a command.
-}
-function F() {
- return Fight(); // *** HINT *** use 'F()', not just 'F' as a command.
-}
-function f() {
- return Fight(); // *** HINT *** use 'f()', not just 'f' as a command.
-}
-function fight() {
- return Fight(); // *** HINT *** use 'fight()', not just 'fight' as a command.
-}
-function U() { 
- return Up(); // *** HINT *** use 'U()', not just 'U' as a command.
-}
-function u() { 
- return Up(); // *** HINT *** use 'u()', not just 'u' as a command.
-}
-function up() { 
- return Up(); // *** HINT *** use 'up()', not just 'up' as a command.
-}
-function EAT() { 
- return Eat(); // *** HINT *** use 'EAT()', not just 'EAT' as a command.
-}
-function eat() { 
- return Eat(); // *** HINT *** use 'eat()', not just 'eat' as a command.
-}
-function me() { 
- return Me(); // *** HINT *** use 'me()', not just 'me' as a command.
-}
-function m() { 
- return Me(); // *** HINT *** use 'm()', not just 'm' as a command.
-}
-function M() { 
- return Me(); // *** HINT *** use 'M()', not just 'M' as a command.
-}
-function help() { 
- return Help(); // *** HINT *** use 'help()', not just 'help' as a command.
-}
-function h() { 
- return Help(); // *** HINT *** use 'h()', not just 'h' as a command.
-}
-function H() { 
- return Help(); // *** HINT *** use 'H()', not just 'H' as a command.
-}
-function HELP() { 
- return Help(); // *** HINT *** use 'HELP()', not just 'HELP' as a command.
-}
+
+RegisterCommands(North,    'North,north,N,n');
+RegisterCommands(South,    'South,south,S,s');
+RegisterCommands(West,     'West,west,W,w');
+RegisterCommands(East,     'East,east,E,e');
+RegisterCommands(Enter,    'Enter,enter,En,en,Ent,ent');
+RegisterCommands(Look,     'Look,look,L,l');
+RegisterCommands(Take,     'Take,take,T,t');
+RegisterCommands(Use,      'Use,use,U,u');
+RegisterCommands(Speak,    'Speak,speak,Sp,sp,SP');
+RegisterCommands(Inventory,'Inventory,inventory,Inv,inv,I,i');
+RegisterCommands(Me,       'Me,me,M,m');
+RegisterCommands(Fight,    'Fight,fight,F,f');
+RegisterCommands(Up,       'Up,up');
+RegisterCommands(Eat,      'Eat,eat,EAT');
+RegisterCommands(Help,     'Help,help,HELP,H,h');
 
 // VERBS!!!
 function Help() {
@@ -327,10 +195,7 @@ function Eat() {
   return "You eat a little food.";
 }
 
-function Look(){ // HEY! No peaking!
-  return __look();  
-}
-function __look() {  
+function Look() {  
   c(say());
   var cell = maps[mapnum][here[1]][here[0]];
   //c(cell);
@@ -355,10 +220,7 @@ function __look() {
   }
   return "";
 }
-function Take(){ //HEY! No peaking!
-  return __take();
-}
-function __take(){
+function Take(){
   message = "There is nothing to take."
   var cell = maps[mapnum][here[1]][here[0]];
   //c(cell);
@@ -381,10 +243,7 @@ function __take(){
   
   return message;
 }
-function Use(x){  //Hey! No peaking!
- return __use(x);
-}
-function __use(x) {
+function Use(x) {
   message = "You can't use that here.";
   var cell = maps[mapnum][here[1]][here[0]];
   //c(cell);
@@ -478,7 +337,7 @@ var maps = [[
 var here = [9,5]; //x,y
 var mapnum = 0;
 
-function move(x,y) { // Hey! No peaking!
+function move(x,y) {
  if ((here[0] + x < 0)||(here[0] + x > maps[mapnum][0].length)) return "the edge of the world has been reached.";
  if ((here[1] + y < 0)||(here[1] + y > maps[mapnum].length)) return "the edge of the world has been reached.";
  if (maps[mapnum][here[1]+y][here[0]+x] == ".") return "the way is blocked";
@@ -531,10 +390,7 @@ function say() {
   return "";
 }
 
-function Up() { // Hey! No peaking!
-  return __up();
-}
-function __up() { 
+function Up() { 
  var cell = maps[mapnum][here[1]][here[0]];
  if (cell == 'a') {
     c("You begin to climb the stairs. There is a creaking noise. The stairs collapse. The entire house falls on top of you.");console.error("\r\n G A M E  O V E R");init(); c(say()); return "";
@@ -548,11 +404,7 @@ function __up() {
  
 }
 
-function Enter() { // Hey! No peaking!
- return __enter();
-}
-
-function __enter() {
+function Enter() {
  var cell = maps[mapnum][here[1]][here[0]];
  
   switch(cell) {
@@ -613,6 +465,9 @@ function replaceLast(x, what, replacement) {
     return x.split("").reverse().join("").replace(new RegExp(what.split("").reverse().join("")), replacement.split("").reverse().join("")).split("").reverse().join("");
 };
 start();
+
+/***/ })(window); /** IIFE end*****************************************************************************************************/
+
 </script>
 <style>
 .hidden { color:white}
