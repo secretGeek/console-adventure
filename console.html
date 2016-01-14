@@ -358,10 +358,10 @@ function Speak(){
  return "You talk. Nobody listens.";
 }
 function Inventory() {
- cj(playerInventory);
+  return cj(playerInventory);
 }
 function Me() {
- cj(playerState);
+  return cj(playerState);
 }
 //Note, ensure each map has a border of dots (this makes game logic simpler)
 var maps = [[   
@@ -501,13 +501,8 @@ function East() {
 function c(s) {
  console.log(s);
 }
-function cls() {
- console.clear();
-}
-
 function cj(o) {
-c(JSON.stringify(o, null, "\t"));
-return "";
+  return JSON.stringify(o, null, "\t").replace(/"|\{(\r\n|\r|\n)|\}/g, '');
 }
 
 function replaceLast(x, what, replacement) {
