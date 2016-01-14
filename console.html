@@ -11,6 +11,8 @@
 /*********      (c) Leon Bambrick 2014.
 /*********      MIT License. (You are free to copy, extend, improve, sell.)
 /*********
+/*********      Contributors: 
+/*********        Doeke Zanstra
 /*********
 /*********      DO NOT READ THE SOURCE CODE UNTIL YOU'VE PLAYED THE GAME!!!!
 /*********
@@ -131,20 +133,27 @@
   };
   
 function start() {
- console.log("%c\
+  console.log("%c\
 *********************************************\r\n\
 *** Hi! Glad you made it down here.       ***\r\n\
 *** Welcome to a console.log() adventure. ***\r\n\
 *********************************************\r\n\
  ", styles.mono);
- console.error("Remember: View source is cheating (using reflection is OK, but it won't help you though).");
- console.info("Type [Help] for help at any time (commands are provided between [], so don't type the brackets).");
- init();
- c(say());
-
+  console.error("Remember: View source is cheating (using reflection is OK, but it won't help you though).");
+  var info = "Type [Help] for help at any time (commands are provided between [], so don't type the brackets).";
+  if (localStorage[localStorageKey]) info += "\r\nThere is a saved game to be played."
+  console.info(info);
+  init();
+  c(say());
 }
 
+/*const*/var localStorageKey = "console-log-data";
 var movecount = 0, playerState;
+var playerInventory = {};
+var here = [9,5]; //x,y
+var mapnum = 0;
+var amulet=true;
+var gold=true;
 
 function init() {
   movecount = 0;
@@ -154,6 +163,32 @@ function init() {
   amulet = true; //this sits on the forest floor.
   gold = true; //inside the cave.
   playerState = { 'health' : 100, 'strength' : 100, 'wisdom' : 0, 'points': 0, 'hunger':0};
+}
+function save(doReset) {
+  var data = {
+    movecount:movecount,
+    playerState:playerState,
+    playerInventory:playerInventory,
+    here:here,
+    mapnum:mapnum,
+    amulet:amulet,
+    gold:gold
+  };
+  if (doReset) delete localStorage[localStorageKey];
+  else localStorage[localStorageKey] = JSON.stringify(data);
+}
+function load() {
+  var json = localStorage[localStorageKey];
+  if (!json) return false;
+  var data = JSON.parse(json);
+  movecount = data.movecount;
+  playerState = data.playerState;
+  playerInventory = data.playerInventory;
+  here = data.here;
+  mapnum = data.mapnum;
+  amulet = data.amulet;
+  gold = data.gold;
+  return true;
 }
 
 // Synonyms for our verbs...
@@ -182,7 +217,9 @@ RegisterCommands(Fight,    'Fight,fight,F,f');
 RegisterCommands(Up,       'Up,up');
 RegisterCommands(Eat,      'Eat,eat,EAT');
 RegisterCommands(Help,     'Help,help,HELP,H,h');
-RegisterCommands(reset,    'Reset,reset,Restart,restart');
+RegisterCommands(Reset,    'Reset,reset,Restart,restart');
+RegisterCommands(Save,     'Save,save');
+RegisterCommands(Load,     'Load,load');
 
 // VERBS!!!
 function Help() {
@@ -190,7 +227,7 @@ function Help() {
 General commands are (without the []): [n], [s], [e], [w] for [North], [South], [East], [West].\r\n\
 Also: [l] for [Look], [t] for [Take], [u] for [Use], [sp] for [Speak], [i] for [Inventory],\r\n\
 [me] for player state, [f] for [fight], [r] for [Restart] and [h] for [Help].\r\n\
-For *special* cheats, press Ctrl-F4/Cmd-W.";
+You can also [Save] and [Load]. For *special* cheats, press Ctrl-F4/Cmd-W.";
 }
 
 function Eat() {
@@ -271,14 +308,20 @@ function Use(x) {
   }  
   return message;
 }
-function reset() {
-  location.reload(); //console acts weird on reset (Safari), and this works...
- console.clear();
- document.body.style.background = "#FFF";
- document.body.innerHTML ="";
- init();
- 
- return say();
+function Save() {
+  save();
+  return "You gameplay has been saved.";
+}
+function Load() {
+  return load() ? say() : "You never seem to have saved your gameplay, Mister!";
+}
+function Reset() {
+  save(true);
+  console.clear();
+  document.body.style.background = "#FFF";
+  document.body.innerHTML ="";
+  init();
+  return say();
 }
 function win(n) {
   switch(n) {
@@ -320,7 +363,6 @@ function Inventory() {
 function Me() {
  cj(playerState);
 }
-var playerInventory = {};
 //Note, ensure each map has a border of dots (this makes game logic simpler)
 var maps = [[   
 "...................", //0 (Starting map!)
@@ -346,9 +388,6 @@ var maps = [[
 ".4100..", //2
 "......."]] //3
 
-var here = [9,5]; //x,y
-var mapnum = 0;
-
 function move(x,y) {
  if ((here[0] + x < 0)||(here[0] + x > maps[mapnum][0].length)) return "the edge of the world has been reached.";
  if ((here[1] + y < 0)||(here[1] + y > maps[mapnum].length)) return "the edge of the world has been reached.";
@@ -358,8 +397,6 @@ function move(x,y) {
  here[1]+=y;
  return say(); 
 }
-var amulet=true;
-var gold=true;
 function elfhut() {
   var message = "A clearing in the forest, with an abandoned elf hut.";
   if (amulet == true) {
