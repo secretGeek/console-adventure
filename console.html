@@ -129,7 +129,9 @@
     
   var styles = {
     big: "font-size:150%;color:red;font-weight:bold",
-    mono: "font-family:Menlo,Consolas,monospace;color:slateblue"
+    mono: "font-family:Menlo,Consolas,monospace;color:slateblue",
+    gray: "color:lightgrey",
+    bold: "font-weight:bold;color:slateblue"
   };
   
 function start() {
@@ -139,7 +141,7 @@ function start() {
 *** Welcome to a console.log() adventure. ***\r\n\
 *********************************************\r\n\
  ", styles.mono);
-  console.error("Remember: View source is cheating (using reflection is OK, but it won't help you though).");
+  console.error("Remember: View source is cheating.");
   var info = "Type [Help] for help at any time (commands are provided between [], so don't type the brackets).";
   if (localStorage[localStorageKey]) info += "\r\nThere is a saved game to be played."
   console.info(info);
@@ -148,57 +150,60 @@ function start() {
 }
 
 /*const*/var localStorageKey = "console-log-data";
+var cmdHistory = [];
 var movecount = 0, playerState;
 var playerInventory = {};
 var here = [9,5]; //x,y
 var mapnum = 0;
 var amulet=true;
 var gold=true;
+var won=false;
 
 function init() {
+  cmdHistory = [];
   movecount = 0;
   mapnum = 0; // we start on the first map.
   here = [9,5]; //x,y. Our starting position.
   playerInventory = { gold : 0, holding:null, food: 10}; //
   amulet = true; //this sits on the forest floor.
   gold = true; //inside the cave.
+  won=false;
   playerState = { 'health' : 100, 'strength' : 100, 'wisdom' : 0, 'points': 0, 'hunger':0};
 }
 function save(doReset) {
-  var data = {
-    movecount:movecount,
-    playerState:playerState,
-    playerInventory:playerInventory,
-    here:here,
-    mapnum:mapnum,
-    amulet:amulet,
-    gold:gold
-  };
   if (doReset) delete localStorage[localStorageKey];
-  else localStorage[localStorageKey] = JSON.stringify(data);
+  else localStorage[localStorageKey] = JSON.stringify(cmdHistory);
 }
 function load() {
-  var json = localStorage[localStorageKey];
-  if (!json) return false;
-  var data = JSON.parse(json);
-  movecount = data.movecount;
-  playerState = data.playerState;
-  playerInventory = data.playerInventory;
-  here = data.here;
-  mapnum = data.mapnum;
-  amulet = data.amulet;
-  gold = data.gold;
+  var cmds = JSON.parse(localStorage[localStorageKey] || "null");
+  if (!cmds) return false;
+
+  console.groupCollapsed("Loading game...");
+  init();
+  cmds.forEach(function(cmd) {
+    if (!/save|load/i.test(cmd)) {
+      console.log("%crun> %c%s", styles.gray, styles.bold, cmd);
+      c(exports[cmd]);
+    }
+  });
+  console.groupEnd();
   return true;
 }
 
 // Synonyms for our verbs...
 function RegisterCommands(fnCommand, synonyms) {
+  var evaluate = function(cmd, obj, arg) {
+    if (won && !/help|reset|restart/i.test(cmd)) return "You've already won, type [reset] to play again.";
+    cmdHistory.push(cmd);
+    return fnCommand.apply(obj, arg);
+  }
   synonyms.split(',').forEach(function(cmd) {
     if (cmd in exports)
       console.error("%cCommand %s is already defined", styles.big, cmd, fnCommand);
-    Object.defineProperty(exports, cmd, { get:function() { //HEY! No peaking!
-      return fnCommand.apply(this, arguments);
-    }});
+    else
+      Object.defineProperty(exports, cmd, { get:function() { //HEY! No peaking!
+        return evaluate(cmd, this, arguments)
+      }});
   }); 
 }
 
@@ -324,6 +329,7 @@ function Reset() {
   return say();
 }
 function win(n) {
+  won = true;
   switch(n) {
     case 0 : c("You take out the amulet and place it in the Magic Amulet Receptacle Device."); break;
     case 1 : c("It begins to hum."); break;
@@ -339,10 +345,10 @@ function win(n) {
     case 11 : {document.body.style.background = "#FF00FF";
               var message = "";
               if (movecount < 20) {
-                message = " (with only a little bit of cheating)";
+                message = " (with only a little bit of cheating, very clever, how did you do that?)";
               }
               document.body.innerHTML = '<div class="win">You won in ' + movecount + ' moves.' + message + '</div><p><code>[reset]</code> to play again.</p>';
-            init();} break;
+              } break;
   }
   if (n < 11) {
     setTimeout(function(){ win(n+1); }, 2000);        
