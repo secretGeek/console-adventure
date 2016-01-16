@@ -170,9 +170,8 @@ function init() {
   won=false;
   playerState = { 'health' : 100, 'strength' : 100, 'wisdom' : 0, 'points': 0, 'hunger':0};
 }
-function save(doReset) {
-  if (doReset) delete localStorage[localStorageKey];
-  else localStorage[localStorageKey] = JSON.stringify(cmdHistory);
+function save() {
+  localStorage[localStorageKey] = JSON.stringify(cmdHistory);
 }
 function load() {
   var cmds = JSON.parse(localStorage[localStorageKey] || "null");
@@ -189,11 +188,18 @@ function load() {
   console.groupEnd();
   return true;
 }
+function remove() {
+  if (localStorage[localStorageKey]) {
+    delete localStorage[localStorageKey];
+    return true;
+  }
+  return false;
+}
 
 // Synonyms for our verbs...
 function RegisterCommands(fnCommand, synonyms) {
   var evaluate = function(cmd, obj, arg) {
-    if (won && !/help|reset|restart/i.test(cmd)) return "You've already won, type [reset] to play again.";
+    if (won && !/help|reset/i.test(cmd)) return "You've already won, type [reset] to play again.";
     cmdHistory.push(cmd);
     return fnCommand.apply(obj, arg);
   }
@@ -222,17 +228,18 @@ RegisterCommands(Fight,    'Fight,fight,F,f');
 RegisterCommands(Up,       'Up,up');
 RegisterCommands(Eat,      'Eat,eat,EAT');
 RegisterCommands(Help,     'Help,help,HELP,H,h');
-RegisterCommands(Reset,    'Reset,reset,Restart,restart');
+RegisterCommands(Reset,    'Reset,reset');
 RegisterCommands(Save,     'Save,save');
 RegisterCommands(Load,     'Load,load');
+RegisterCommands(Remove,   'Remove,remove');
 
 // VERBS!!!
 function Help() {
   return "\
 General commands are (without the []): [n], [s], [e], [w] for [North], [South], [East], [West].\r\n\
 Also: [l] for [Look], [t] for [Take], [u] for [Use], [sp] for [Speak], [i] for [Inventory],\r\n\
-[me] for player state, [f] for [fight], [r] for [Restart] and [h] for [Help].\r\n\
-You can also [Save] and [Load]. For *special* cheats, press Ctrl-F4/Cmd-W.";
+[me] for player state, [f] for [fight] and [h] for [Help].\r\n\
+You can also [Reset], [Save] and [Load] or [Remove] a game. For *special* cheats, press Ctrl-F4/Cmd-W.";
 }
 
 function Eat() {
@@ -320,8 +327,10 @@ function Save() {
 function Load() {
   return load() ? say() : "You never seem to have saved your gameplay, Mister!";
 }
+function Remove() {
+  return remove() ? "The saved game has been deleted." : "You never seem to have saved your gameplay, Mister!";
+}
 function Reset() {
-  save(true);
   console.clear();
   document.body.style.background = "#FFF";
   document.body.innerHTML ="";
@@ -446,17 +455,19 @@ function say() {
 }
 
 function Up() { 
- var cell = maps[mapnum][here[1]][here[0]];
- if (cell == 'a') {
-    c("You begin to climb the stairs. There is a creaking noise. The stairs collapse. The entire house falls on top of you.");console.error("\r\n G A M E  O V E R");init(); c(say()); return "";
+  var cell = maps[mapnum][here[1]][here[0]];
+  if (cell == 'a') {
+    c("You begin to climb the stairs. There is a creaking noise. The stairs collapse. The entire house falls on top of you.");
+    console.error("\r\n G A M E  O V E R");
+    init(); 
+    return say();
  } else  if (mapnum ==2 && cell == '2') {
-	mapnum = 0;
-	here = [9,7];
+    mapnum = 0;
+    here = [9,7];
     c("Slowly you climb the rope. It creaks and threatens to snap. Eventually you've hauled yourself to the surface.");
-	c("Stepping around a large boulder you find...");
-	return say();
+    c("Stepping around a large boulder you find...");
+    return say();
  } else return "You cannot do that here.";
- 
 }
 
 function Enter() {
