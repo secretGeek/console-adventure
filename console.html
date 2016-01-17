@@ -126,48 +126,44 @@
 */
 (function(exports) { /*** IIFE start **********************************************************************************************/
   'use strict';
-    
-  var styles = {
-    big: "font-size:150%;color:red;font-weight:bold",
-    mono: "font-family:Menlo,Consolas,monospace;color:slateblue",
-    gray: "color:lightgrey",
-    bold: "font-weight:bold;color:slateblue"
-  };
   
 function start() {
-  console.log("%c\
-*********************************************\r\n\
-*** Hi! Glad you made it down here.       ***\r\n\
-*** Welcome to a console.log() adventure. ***\r\n\
-*********************************************\r\n\
- ", styles.mono);
+  console.log("\
+******************************************\r\n\
+*** Hi! Glad you made it down here.       \r\n\
+*** Welcome to a console.log() adventure. \r\n\
+******************************************\r\n\
+ ");
   console.error("Remember: View source is cheating.");
   var info = "Type [Help] for help at any time (commands are provided between [], so don't type the brackets).";
   if (localStorage[localStorageKey]) info += "\r\nThere is a saved game to be played."
   console.info(info);
   init();
-  c(say());
+  say();
+  c(speakTellings());
 }
 
 /*const*/var localStorageKey = "console-log-data";
 var cmdHistory = [];
+var tellbuf = [];
 var movecount = 0, playerState;
 var playerInventory = {};
 var here = [9,5]; //x,y
 var mapnum = 0;
 var amulet=true;
 var gold=true;
-var won=false;
+var busy=false;
 
 function init() {
   cmdHistory = [];
+  tellbuf = [];
   movecount = 0;
   mapnum = 0; // we start on the first map.
   here = [9,5]; //x,y. Our starting position.
   playerInventory = { gold : 0, holding:null, food: 10}; //
   amulet = true; //this sits on the forest floor.
   gold = true; //inside the cave.
-  won=false;
+  busy=false;
   playerState = { 'health' : 100, 'strength' : 100, 'wisdom' : 0, 'points': 0, 'hunger':0};
 }
 function save() {
@@ -181,7 +177,7 @@ function load() {
   init();
   cmds.forEach(function(cmd) {
     if (!/save|load/i.test(cmd)) {
-      console.log("%crun> %c%s", styles.gray, styles.bold, cmd);
+      console.log("run> [%s]", cmd);
       c(exports[cmd]);
     }
   });
@@ -196,16 +192,30 @@ function remove() {
   return false;
 }
 
+function tell(text) {
+  tellbuf.push(text);
+}
+function speakTellings() {
+  var tellings = '\t'+tellbuf.join('\r\n\t');
+  tellbuf = [];
+  return tellings;
+
+}
 // Synonyms for our verbs...
 function RegisterCommands(fnCommand, synonyms) {
   var evaluate = function(cmd, obj, arg) {
-    if (won && !/help|reset/i.test(cmd)) return "You've already won, type [reset] to play again.";
+    if (busy) {
+      if (busy=='won' && !/help|reset/i.test(cmd)) return "You've already won, type [reset] to play again.";
+      if (busy=='dead') return "You're dead. Please wait before you will be reincarnated.";
+      return "I'm busy, please wait patiently...";
+    }
     cmdHistory.push(cmd);
-    return fnCommand.apply(obj, arg);
+    fnCommand.apply(obj, arg);
+    return speakTellings();
   }
   synonyms.split(',').forEach(function(cmd) {
     if (cmd in exports)
-      console.error("%cCommand %s is already defined", styles.big, cmd, fnCommand);
+      console.error("%cCommand %s is already defined", "font-size:150%;color:red;font-weight:bold", cmd, fnCommand);
     else
       Object.defineProperty(exports, cmd, { get:function() { //HEY! No peaking!
         return evaluate(cmd, this, arguments)
@@ -235,76 +245,71 @@ RegisterCommands(Remove,   'Remove,remove');
 
 // VERBS!!!
 function Help() {
-  return "\
-General commands are (without the []): [n], [s], [e], [w] for [North], [South], [East], [West].\r\n\
-Also: [l] for [Look], [t] for [Take], [u] for [Use], [sp] for [Speak], [i] for [Inventory],\r\n\
-[me] for player state, [f] for [fight] and [h] for [Help].\r\n\
-You can also [Reset], [Save] and [Load] or [Remove] a game. For *special* cheats, press Ctrl-F4/Cmd-W.";
+  tell('General commands are (without the []): [n], [s], [e], [w] for [North], [South], [East], [West].');
+  tell('Also: [l] for [Look], [t] for [Take], [u] for [Use], [sp] for [Speak], [i] for [Inventory],');
+  tell('[me] for player state, [f] for [fight] and [h] for [Help].');
+  tell('You can also [Reset], [Save] and [Load] or [Remove] a game. For *special* cheats, press Ctrl-F4/Cmd-W.');
 }
 
 function Eat() {
   if (playerState.hunger <= 0) {
-    return "You are not hungry.";
+    return tell("You are not hungry.");
   }
   if (playerInventory.food <= 0) {
-    return "You have no food.";
+    return tell("You have no food.");
   }
   
   playerInventory.food -= 1;
   playerState.hunger -= 1;  
-  return "You eat a little food.";
+  tell("You eat a little food.");
 }
 
 function Look() {  
-  c(say());
+  say();
   var cell = maps[mapnum][here[1]][here[0]];
   //c(cell);
   switch(cell) {
     
-	case "H" : return "The house is weathered, and appears abandoned. The front door is partially off its hinges. You could easily [Enter].";
-	case "V" : return "Cool air blows from the cave. The entrance is large enough that you can [Enter]. You can move " + Possibilities();
-	case "2" : return "There is a rope you can climb [Up]. It looks sturdy enough to hold your weight.";	
-    case "k" : return "This kitchen contains one of those fancy Magic Amulet Receptacle Devices. You could try to [Use] it, I guess.";	
+	case "H" : return tell("The house is weathered, and appears abandoned. The front door is partially off its hinges."),tell("You could easily [Enter].");
+	case "V" : return tell("Cool air blows from the cave. The entrance is large enough that you can [Enter]. You can move " + Possibilities());
+	case "2" : return tell("There is a rope you can climb [Up]. It looks sturdy enough to hold your weight.");	
+    case "k" : return tell("This kitchen contains one of those fancy Magic Amulet Receptacle Devices."),tell("You could try to [Use] it, I guess.");	
     case "r" : 
     {
-        c("The room contains a bath, a sink, and a toilet that runs continuously.");
-        c("There is a small window above the toilet. You step up onto the toilet seat,");
-        c("to get a better view through the window. Yes, you can see the outside world,");
-        c("and also... suddenly you fall through the window, landing on the ground outside.");
-        c("You walk around the house until you find the front door.");
+        tell("The room contains a bath, a sink, and a toilet that runs continuously.");
+        tell("There is a small window above the toilet. You step up onto the toilet seat,");
+        tell("to get a better view through the window. Yes, you can see the outside world,");
+        tell("and also... suddenly you fall through the window, landing on the ground outside.");
+        tell("You walk around the house until you find the front door.");
         here = [11,5];
         mapnum = 0;
         return say();	
     }
-    default : return "You see nothing else.";
+    default : return tell("You see nothing else.");
   }
-  return "";
 }
 function Take(){
-  var message = "There is nothing to take."
   var cell = maps[mapnum][here[1]][here[0]];
   //c(cell);
   switch(cell) {
     case "E" : {
        if (amulet == true) {
-         message = "You pick up the amulet.";
          amulet = false;
          playerInventory.amulet = 1;
+         return tell("You pick up the amulet.");
         }
     }
     case "3" : {
        if (gold == true) {
-         message = "You take every last piece of gold.";
          gold = false;
          playerInventory.gold = 100;
+         return tell("You take every last piece of gold.");
        }
     }
+    default: tell("There is nothing to take.");
   }
-  
-  return message;
 }
 function Use(x) {
-  var message = "You can't use that here.";
   var cell = maps[mapnum][here[1]][here[0]];
   //c(cell);
   switch(cell) {
@@ -312,44 +317,44 @@ function Use(x) {
         if (playerInventory.amulet == 1) {
           win(0);
           //init();
-          return "click.";
+          return tell("click.");
         } else {
-          message = "It's not clear how to use this Magic Amulet Receptacle Device. Perhaps it requires a magic amulet. But where would we get one of those?";
+          tell("It's not clear how to use this Magic Amulet Receptacle Device. Perhaps it requires a magic amulet. But where would we get one of those?");
         }
     }
+    default: tell("You can't use that here.");
   }  
-  return message;
 }
 function Save() {
   save();
-  return "You gameplay has been saved.";
+  tell("You gameplay has been saved.");
 }
 function Load() {
-  return load() ? say() : "You never seem to have saved your gameplay, Mister!";
+  return load() ? say() : tell("You never seem to have saved your gameplay, Mister!");
 }
 function Remove() {
-  return remove() ? "The saved game has been deleted." : "You never seem to have saved your gameplay, Mister!";
+  return tell(remove() ? "The saved game has been deleted." : "You never seem to have saved your gameplay, Mister!");
 }
 function Reset() {
   console.clear();
   document.body.style.background = "#FFF";
   document.body.innerHTML ="";
   init();
-  return say();
+  say();
 }
 function win(n) {
-  won = true;
+  busy = 'won';
   switch(n) {
-    case 0 : c("You take out the amulet and place it in the Magic Amulet Receptacle Device."); break;
-    case 1 : c("It begins to hum."); break;
-    case 2 : c("Sparks!"); break;
-    case 3 : c("A bolt of lightning!"); break;
-    case 4 : c("Magic energy lifts you from the floor..."); break;
-    case 5 : c("Suddenly, everything goes dark."); break;
-    case 6 : console.log('%c Oh my heavens! You look up and see a new world.', 'background: #222; color: #bada55'); break;
-    case 7 : console.log('%c You realize at once that everything you have experienced is a mere shadow of the true world.', 'background: #222; color: #bada55'); break;
-    case 8 : console.log('%c You\'ve labored in a phantom world, fleeting and unreal, while the real world of ideas, far more powerful and permanent than your own, was right there all along, hovering above you.', 'background: #222; color: #bada55'); break;
-    case 9 : console.log('%c You turn to the world above you, and contemplate it\'s majesty.', 'background: #222; color: #bada55'); break;
+    case 0 : c("\tYou take out the amulet and place it in the Magic Amulet Receptacle Device."); break;
+    case 1 : c("\tIt begins to hum."); break;
+    case 2 : c("\tSparks!"); break;
+    case 3 : c("\tA bolt of lightning!"); break;
+    case 4 : c("\tMagic energy lifts you from the floor..."); break;
+    case 5 : c("\tSuddenly, everything goes dark."); break;
+    case 6 : console.log('%c\t Oh my heavens! You look up and see a new world.', 'background: #222; color: #bada55'); break;
+    case 7 : console.log('%c\t You realize at once that everything you have experienced is a mere shadow of the true world.', 'background: #222; color: #bada55'); break;
+    case 8 : console.log('%c\t You\'ve labored in a phantom world, fleeting and unreal, while the real world of ideas,\r\n\t far more powerful and permanent than your own, was right there all along, hovering above you.', 'background: #222; color: #bada55'); break;
+    case 9 : console.log('%c\t You turn to the world above you, and contemplate it\'s majesty.', 'background: #222; color: #bada55'); break;
     case 10 : break; //pause for a beat.
     case 11 : {document.body.style.background = "#FF00FF";
               var message = "";
@@ -367,16 +372,16 @@ function win(n) {
   }
 }
 function Fight(){
- return "You punch wildly at the air. Exhausted, you sit down.";
+ tell("You punch wildly at the air. Exhausted, you sit down.");
 }
 function Speak(){
- return "You talk. Nobody listens.";
+ tell("You talk. Nobody listens.");
 }
 function Inventory() {
-  return cj(playerInventory);
+  cj(playerInventory);
 }
 function Me() {
-  return cj(playerState);
+  cj(playerState);
 }
 //Note, ensure each map has a border of dots (this makes game logic simpler)
 var maps = [[   
@@ -404,70 +409,85 @@ var maps = [[
 "......."]] //3
 
 function move(x,y) {
- if ((here[0] + x < 0)||(here[0] + x > maps[mapnum][0].length)) return "the edge of the world has been reached.";
- if ((here[1] + y < 0)||(here[1] + y > maps[mapnum].length)) return "the edge of the world has been reached.";
- if (maps[mapnum][here[1]+y][here[0]+x] == ".") return "the way is blocked";
+ if ((here[0] + x < 0)||(here[0] + x > maps[mapnum][0].length)) return tell("the edge of the world has been reached.");
+ if ((here[1] + y < 0)||(here[1] + y > maps[mapnum].length)) return tell("the edge of the world has been reached.");
+ if (maps[mapnum][here[1]+y][here[0]+x] == ".") return tell("the way is blocked");
  movecount++;
  here[0]+=x;
  here[1]+=y;
  return say(); 
 }
 function elfhut() {
-  var message = "A clearing in the forest, with an abandoned elf hut.";
+  tell("A clearing in the forest, with an abandoned elf hut.");
   if (amulet == true) {
-    message += "\r\nAn amulet lies on the floor.";
+    tell("An amulet lies on the floor.");
   }
-  return message;
 }
 function horde() {
-  var message = "An empty cavern.";
   if (gold == true) {
-    message = "There is a horde of treasure. Gold coins, goblets, trinkets.";
+    tell("There is a horde of treasure. Gold coins, goblets, trinkets.");
+  } else {
+    tell("An empty cavern.")
   }
-  return message;
+}
+function die(stepMs, lines) {
+  busy = 'dead';
+  var lineIndex = 0
+  ,   dieId = setInterval(function() {
+    if (lineIndex < lines.length) {
+      c('\t'+lines[lineIndex]);
+      lineIndex++;
+    } else {
+      clearInterval(dieId);
+      console.error("\r\n\t G A M E  O V E R \r\n\t");
+      init(); 
+      say();
+      c(speakTellings());
+    }
+  }, stepMs); 
+}
+function repeat(str,num) {
+  return new Array(num+1).join(str);
 }
 function say() {
   var cell = maps[mapnum][here[1]][here[0]];
   switch(cell) {
-    case "T" : return "You are in a town square. Paths lead to the " + Possibilities() + ".";
-	case "P" : return "You walk carefully along the path. You can move " + Possibilities() + ".";
-	case "H" : return "There is a house.";
-	case "F" : return "A spooky forest. You can proceed " + Possibilities() + ".";
-  	case "f" : return "The forest is so thick, you don't know what directions are possible.";
+    case "T" : return tell("You are in a town square. Paths lead to the " + Possibilities() + ".");
+    case "P" : return tell("You walk carefully along the path. You can move " + Possibilities() + ".");
+    case "H" : return tell("There is a house.");
+    case "F" : return tell("A spooky forest. You can proceed " + Possibilities() + ".");
+    case "f" : return tell("The forest is so thick, you don't know what directions are possible.");
     case "E" : return elfhut();
-    case "W" : return "A stream with a waterfall blocks your way. It is teeming with fish.";
-	case "C" : return "You are standing on a cliff by the sea. Seagulls are squawking.";
-	case "V" : return "The entrance to a cave. Chills run up and down your spine.";
-	case "k" : return "You are in a kitchen. You can move " + Possibilities() + ".";
-	case "h" : return "You are in a hallway. You can move " + Possibilities() + ".";
-	case "r" : return "You are in a bedroom. You can move " + Possibilities() + ".";
-	case "b" : return "You are in a bathroom. You can move " + Possibilities() + ".";
-	case "y" : return "You are in a foyer. You can move " + Possibilities() + ".";
-	case "a" : return "Stairs lead up to an attic. You can move [Up], " + Possibilities() + ".";
-	case "0" : return "You are in a deep dark tunnel. Feeling with your fingers you find you can move " + Possibilities() + ".";
-	case "1" : return "Somehow it is even darker here. You feel yourself going cray cray. The one thing you still have is your sense of direction. You can move " + Possibilities() + ".";
-	case "2" : return "You are in a wide open cavern. Bones litter the floor. You can move " + Possibilities() + ".";
-	case "3" : return horde();
-	case "4" :  { c("A bottomless pit. You fall forever.");console.error("\r\n G A M E  O V E R");init(); c(say()); return "";}
-    default : return "You are in a place i do not recognize.";
+    case "W" : return tell("A stream with a waterfall blocks your way. It is teeming with fish.");
+    case "C" : return tell("You are standing on a cliff by the sea. Seagulls are squawking.");
+    case "V" : return tell("The entrance to a cave. Chills run up and down your spine.");
+    case "k" : return tell("You are in a kitchen. You can move " + Possibilities() + ".");
+    case "h" : return tell("You are in a hallway. You can move " + Possibilities() + ".");
+    case "r" : return tell("You are in a bedroom. You can move " + Possibilities() + ".");
+    case "b" : return tell("You are in a bathroom. You can move " + Possibilities() + ".");
+    case "y" : return tell("You are in a foyer. You can move " + Possibilities() + ".");
+    case "a" : return tell("Stairs lead up to an attic. You can move [Up], " + Possibilities() + ".");
+    case "0" : return tell("You are in a deep dark tunnel. Feeling with your fingers you find you can move " + Possibilities() + ".");
+    case "1" : return tell("Somehow it is even darker here. You feel yourself going cray cray."),tell("The one thing you still have is your sense of direction. You can move " + Possibilities() + ".");
+    case "2" : return tell("You are in a wide open cavern. Bones litter the floor. You can move " + Possibilities() + ".");
+    case "3" : return horde();
+    case "4" : return die(450,'You fall forever.'.split("").map(function(s,i){return repeat(' ',i)+s;})), tell("A bottomless pit.");
+    default  : return tell("You are in a place i do not recognize.");
   }
-  return "";
 }
 
 function Up() { 
   var cell = maps[mapnum][here[1]][here[0]];
   if (cell == 'a') {
-    c("You begin to climb the stairs. There is a creaking noise. The stairs collapse. The entire house falls on top of you.");
-    console.error("\r\n G A M E  O V E R");
-    init(); 
-    return say();
+    die(1000,['There is a creaking noise.','The stairs collapse.','The entire house falls on top of you.']);
+    return tell("You begin to climb the stairs.");
  } else  if (mapnum ==2 && cell == '2') {
     mapnum = 0;
     here = [9,7];
-    c("Slowly you climb the rope. It creaks and threatens to snap. Eventually you've hauled yourself to the surface.");
-    c("Stepping around a large boulder you find...");
+    tell("Slowly you climb the rope. It creaks and threatens to snap. Eventually you've hauled yourself to the surface.");
+    tell("Stepping around a large boulder you find...");
     return say();
- } else return "You cannot do that here.";
+ } else return tell("You cannot do that here.");
 }
 
 function Enter() {
@@ -476,17 +496,18 @@ function Enter() {
   switch(cell) {
     case "H" : {
 			mapnum = 1;
-			c("You push the door open and step inside.");
+			tell("You push the door open and step inside.");
 			here = [5,2];
 			return say();
 		}
     case "V" : {
 			mapnum = 2;
-			c("You walk slowly inside... you fall a short distance, it is too far to climb back up. It is pitch black. You are likely to be eaten by a grue.");
+			tell("You walk slowly inside... you fall a short distance, it is too far to climb back up.");
+      tell("It is pitch black. You are likely to be eaten by a grue.");
 			here = [4,2];
 			return say();
 		}
-    default : return "That is not possible here.";
+    default : return tell("That is not possible here.");
   }
   return "";
 }
@@ -519,7 +540,7 @@ function c(s) {
  console.log(s);
 }
 function cj(o) {
-  return JSON.stringify(o, null, "\t").replace(/"|\{(\r\n|\r|\n)|\}/g, '');
+  tell(JSON.stringify(o, null, "\t").replace(/"|\{(\r\n|\r|\n)|\}/g, ''));
 }
 
 function replaceLast(x, what, replacement) {
