@@ -205,9 +205,11 @@ function speakTellings() {
 function RegisterCommands(fnCommand, synonyms) {
   var evaluate = function(cmd, obj, arg) {
     if (busy) {
-      if (busy=='won' && !/help|reset/i.test(cmd)) return "You've already won, type [reset] to play again.";
-      if (busy=='dead') return "You're dead. Please wait before you will be reincarnated.";
-      return "I'm busy, please wait patiently...";
+      if (busy=='won') {
+        if (!/help|reset/i.test(cmd)) return "You've already won, type [reset] to play again.";
+      }
+      else if (busy=='dead') return "You're dead. Please wait before you will be reincarnated.";
+      else return "I'm busy, please wait patiently...";
     }
     cmdHistory.push(cmd);
     fnCommand.apply(obj, arg);
@@ -276,14 +278,19 @@ function Look() {
     case "k" : return tell("This kitchen contains one of those fancy Magic Amulet Receptacle Devices."),tell("You could try to [Use] it, I guess.");	
     case "r" : 
     {
-        tell("The room contains a bath, a sink, and a toilet that runs continuously.");
-        tell("There is a small window above the toilet. You step up onto the toilet seat,");
-        tell("to get a better view through the window. Yes, you can see the outside world,");
-        tell("and also... suddenly you fall through the window, landing on the ground outside.");
-        tell("You walk around the house until you find the front door.");
-        here = [11,5];
-        mapnum = 0;
-        return say();	
+      act(1000, 
+      [ "The room contains a bath, a sink, and a toilet that runs continuously."
+      , "There is a small window above the toilet. You step up onto the toilet seat,"
+      , "to get a better view through the window. Yes, you can see the outside world,"
+      , "and also... suddenly you fall through the window, landing on the ground outside."
+      , "You walk around the house until you find the front door."
+      , function() {
+          here = [11,5];
+          mapnum = 0;
+          say();
+          return speakTellings();
+        } 
+      ]);
     }
     default : return tell("You see nothing else.");
   }
@@ -430,22 +437,35 @@ function horde() {
     tell("An empty cavern.")
   }
 }
-function die(stepMs, lines) {
-  busy = 'dead';
+function stepTell(stepMs, lines) {
   var lineIndex = 0
-  ,   dieId = setInterval(function() {
-    if (lineIndex < lines.length) {
-      c('\t'+lines[lineIndex]);
-      lineIndex++;
-    } else {
-      clearInterval(dieId);
-      console.error("\r\n\t G A M E  O V E R \r\n\t");
-      init(); 
-      say();
-      c(speakTellings());
-    }
+  ,   stepId = setInterval(function() {
+    var line = lines[lineIndex];
+    if (typeof line=='function') line = line();
+    if (line !== null) c('\t'+line.replace(/^\t+/,''));
+    lineIndex++;
+    if (lineIndex == lines.length) clearInterval(stepId);
   }, stepMs); 
 }
+function act(stepMs,lines) {
+  busy = 'yes';
+  lines.push(function() { 
+    busy=null; 
+    return null;
+  });
+  stepTell(stepMs,lines);
+}
+function die(stepMs,lines) {
+  busy = 'dead';
+  lines.push(function() {
+    console.error("\r\n\t G A M E  O V E R \r\n\t");
+    init(); 
+    say();
+    return speakTellings();
+  });
+  stepTell(stepMs,lines);
+}
+
 function repeat(str,num) {
   return new Array(num+1).join(str);
 }
@@ -471,7 +491,7 @@ function say() {
     case "1" : return tell("Somehow it is even darker here. You feel yourself going cray cray."),tell("The one thing you still have is your sense of direction. You can move " + Possibilities() + ".");
     case "2" : return tell("You are in a wide open cavern. Bones litter the floor. You can move " + Possibilities() + ".");
     case "3" : return horde();
-    case "4" : return die(450,'You fall forever.'.split("").map(function(s,i){return repeat(' ',i)+s;})), tell("A bottomless pit.");
+    case "4" : return die(250,'You fall forever.'.split("").map(function(s,i){return repeat(' ',i)+s;})), tell("A bottomless pit.");
     default  : return tell("You are in a place i do not recognize.");
   }
 }
