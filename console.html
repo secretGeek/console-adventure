@@ -169,20 +169,52 @@ function init() {
 function save() {
   localStorage[localStorageKey] = JSON.stringify(cmdHistory);
 }
+function runcmd(cmd) {
+  if (!/save|load|remove/i.test(cmd)) {
+    console.log("run> [%s]", cmd);
+    c(exports[cmd]);
+  }
+}
 function load() {
   var cmds = JSON.parse(localStorage[localStorageKey] || "null");
   if (!cmds) return false;
 
   console.groupCollapsed("Loading game...");
   init();
-  cmds.forEach(function(cmd) {
-    if (!/save|load/i.test(cmd)) {
-      console.log("run> [%s]", cmd);
-      c(exports[cmd]);
-    }
-  });
+  cmds.forEach(runcmd);
   console.groupEnd();
   return true;
+}
+function timedLoad(timeout, cmds) {
+  init();
+  busy = 'loading';
+  timedForEach(cmds, timeout, function(cmd) {
+    if (busy == 'won') return true;
+    if (busy == 'loading' || busy === false) {
+      busy = false;
+      runcmd(cmd);
+      if (busy === false) {
+        busy = 'loading';
+        return true;
+      }
+    }
+  }, function() {
+    busy = false;
+  });
+  tell("Loading game...");
+  return;
+}
+function timedForEach(array, timeout, fnEach, fnFinal) {
+  var index = 0, intervalId = setInterval(function() {
+    if (Array.isArray(array) && index < array.length) {
+      if (fnEach(array[index])) //only advance array, when it's OK
+        index++;
+    }
+    else {
+      fnFinal();
+      clearInterval(intervalId);
+    }
+  }, timeout);
 }
 function remove() {
   if (localStorage[localStorageKey]) {
@@ -202,8 +234,8 @@ function speakTellings() {
 
 }
 // Synonyms for our verbs...
-function RegisterCommands(fnCommand, synonyms) {
-  var evaluate = function(cmd, obj, arg) {
+function RegisterCommands(fnCommand, synonyms, hasSetter/*no load/save support for setter*/) {
+  var evaluate = function(cmd, args) {
     if (busy) {
       if (busy=='won') {
         if (!/help|reset/i.test(cmd)) return "You've already won, type [reset] to play again.";
@@ -212,24 +244,28 @@ function RegisterCommands(fnCommand, synonyms) {
       else return "I'm busy, please wait patiently...";
     }
     cmdHistory.push(cmd);
-    fnCommand.apply(obj, arg);
+    fnCommand.apply(this, args);
     return speakTellings();
   }
   synonyms.split(',').forEach(function(cmd) {
     if (cmd in exports)
       console.error("%cCommand %s is already defined", "font-size:150%;color:red;font-weight:bold", cmd, fnCommand);
-    else
-      Object.defineProperty(exports, cmd, { get:function() { //HEY! No peaking!
-        return evaluate(cmd, this, arguments)
-      }});
+    else {
+      var obj = { get:function() { //HEY! No peaking!
+        return evaluate(cmd, arguments)
+      }};
+      if (hasSetter) obj.set = function() {
+        c(evaluate(cmd, arguments));
+      };
+      Object.defineProperty(exports, cmd, obj);
+    }
   }); 
 }
-
 RegisterCommands(North,    'North,north,N,n');
 RegisterCommands(South,    'South,south,S,s');
 RegisterCommands(West,     'West,west,W,w');
 RegisterCommands(East,     'East,east,E,e');
-RegisterCommands(Enter,    'Enter,enter,En,en,Ent,ent');
+RegisterCommands(Enter,    'Enter,enter,Ent,ent');
 RegisterCommands(Look,     'Look,look,L,l');
 RegisterCommands(Take,     'Take,take,T,t');
 RegisterCommands(Use,      'Use,use,U,u');
@@ -239,18 +275,22 @@ RegisterCommands(Me,       'Me,me,M,m');
 RegisterCommands(Fight,    'Fight,fight,F,f');
 RegisterCommands(Up,       'Up,up');
 RegisterCommands(Eat,      'Eat,eat,EAT');
-RegisterCommands(Help,     'Help,help,HELP,H,h');
+RegisterCommands(Help,     'Help,help,HELP,H,h', true);
 RegisterCommands(Reset,    'Reset,reset');
 RegisterCommands(Save,     'Save,save');
-RegisterCommands(Load,     'Load,load');
+RegisterCommands(Load,     'Load,load', true);
 RegisterCommands(Remove,   'Remove,remove');
 
 // VERBS!!!
-function Help() {
+function Help(value) {
   tell('General commands are (without the []): [n], [s], [e], [w] for [North], [South], [East], [West].');
-  tell('Also: [l] for [Look], [t] for [Take], [u] for [Use], [sp] for [Speak], [i] for [Inventory],');
-  tell('[me] for player state, [f] for [fight] and [h] for [Help].');
-  tell('You can also [Reset], [Save] and [Load] or [Remove] a game. For *special* cheats, press Ctrl-F4/Cmd-W.');
+  tell('Also: [l] for [Look], [t] for [Take], [u] for [Use], [sp] for [Speak], [Eat], [i] for [Inventory],');
+  tell('[Me] for player state, [f] for [Fight] and [h] for [Help]. You can also [Reset], [Save]');
+  tell('and [Load] or [Remove] a game. For *special* cheats, press Ctrl-F4/Cmd-W.');
+  if (value)
+    tell("The super special secret cheats are [Load = 2000] for the demo or [Load = -2000] for full demo");
+  else
+    tell("For secrets, try redefine help somehow.");
 }
 
 function Eat() {
@@ -336,7 +376,13 @@ function Save() {
   save();
   tell("You gameplay has been saved.");
 }
-function Load() {
+function Load(value) {
+  if (value) {
+    var timeout = +value || 2000;
+    if (timeout > 0) timedLoad(timeout, 'n,n,e,e,e,e,e,t,w,w,w,w,w,s,s,e,e,ent,w,w,w,n,l,u'.split(','));
+    else timedLoad(-timeout, 'eat,w,w,sp,e,e,s,s,l,ent,w,w,n,t,inv,s,e,e,n,l,up,n,n,n,n,w,w,w,w,w,n,w,w,s,s,f,n,n,e,e,n,e,e,e,e,e,e,e,s,e,e,s,t,inv,s,w,w,n,w,w,w,s,s,e,e,l,ent,w,n,l,ent,w,w,w,s,n,w,e,n,l,me,use'.split(','));
+    return;
+  }
   return load() ? say() : tell("You never seem to have saved your gameplay, Mister!");
 }
 function Remove() {
@@ -450,7 +496,7 @@ function stepTell(stepMs, lines) {
 function act(stepMs,lines) {
   busy = 'yes';
   lines.push(function() { 
-    busy=null; 
+    busy = false; 
     return null;
   });
   stepTell(stepMs,lines);
@@ -560,7 +606,7 @@ function c(s) {
  console.log(s);
 }
 function cj(o) {
-  tell(JSON.stringify(o, null, "\t").replace(/"|\{(\r\n|\r|\n)|\}/g, ''));
+  tell(JSON.stringify(o, null, "\t").replace(/"|\{(\r\n|\r|\n)\t|\}/g, ''));
 }
 
 function replaceLast(x, what, replacement) {
