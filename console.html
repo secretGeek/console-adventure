@@ -11,6 +11,8 @@
 /*********      (c) Leon Bambrick 2014.
 /*********      MIT License. (You are free to copy, extend, improve, sell.)
 /*********
+/*********      Contributors: 
+/*********        Doeke Zanstra
 /*********
 /*********      DO NOT READ THE SOURCE CODE UNTIL YOU'VE PLAYED THE GAME!!!!
 /*********
@@ -122,270 +124,239 @@
 /*********
 /**********************************************************************************************************************************************************
 */
+(function(exports) { /*** IIFE start **********************************************************************************************/
+  'use strict';
+  
 function start() {
- c("*****************************************");
- c("*** Hi! Glad you made it down here.");
- c("*** Welcome to a console.log() adventure.");
- c("*****************************************");
- console.error("Remember: View source is cheating.");
- console.info("Use Help() for help at any time.");
- init();
- c(say());
- 
+  console.log("\
+******************************************\r\n\
+*** Hi! Glad you made it down here.       \r\n\
+*** Welcome to a console.log() adventure. \r\n\
+******************************************\r\n\
+ ");
+  console.error("Remember: View source is cheating.");
+  var info = "Type [Help] for help at any time (commands are provided between [], so don't type the brackets).";
+  if (localStorage[localStorageKey]) info += "\r\nThere is a saved game to be played."
+  console.info(info);
+  init();
+  say();
+  c(speakTellings());
 }
 
-function init() { //HEY! no peeking.
- return __init();
-}
-var movecount = 0;
-function __init() {
+/*const*/var localStorageKey = "console-log-data";
+var cmdHistory = [];
+var tellbuf = [];
+var movecount = 0, playerState;
+var playerInventory = {};
+var here = [9,5]; //x,y
+var mapnum = 0;
+var amulet=true;
+var gold=true;
+var busy=false;
+
+function init() {
+  cmdHistory = [];
+  tellbuf = [];
   movecount = 0;
   mapnum = 0; // we start on the first map.
   here = [9,5]; //x,y. Our starting position.
   playerInventory = { gold : 0, holding:null, food: 10}; //
   amulet = true; //this sits on the forest floor.
   gold = true; //inside the cave.
+  busy=false;
   playerState = { 'health' : 100, 'strength' : 100, 'wisdom' : 0, 'points': 0, 'hunger':0};
 }
+function save() {
+  localStorage[localStorageKey] = JSON.stringify(cmdHistory);
+}
+function runcmd(cmd) {
+  if (!/save|load|remove/i.test(cmd)) {
+    console.log("run> [%s]", cmd);
+    c(exports[cmd]);
+  }
+}
+function load() {
+  var cmds = JSON.parse(localStorage[localStorageKey] || "null");
+  if (!cmds) return false;
 
+  console.groupCollapsed("Loading game...");
+  init();
+  cmds.forEach(runcmd);
+  console.groupEnd();
+  return true;
+}
+function timedLoad(timeout, cmds) {
+  init();
+  busy = 'loading';
+  timedForEach(cmds, timeout, function(cmd) {
+    if (busy == 'won') return true;
+    if (busy == 'loading' || busy === false) {
+      busy = false;
+      runcmd(cmd);
+      if (busy === false) {
+        busy = 'loading';
+        return true;
+      }
+    }
+  }, function() {
+    busy = false;
+  });
+  tell("Loading game...");
+  return;
+}
+function timedForEach(array, timeout, fnEach, fnFinal) {
+  var index = 0, intervalId = setInterval(function() {
+    if (Array.isArray(array) && index < array.length) {
+      if (fnEach(array[index])) //only advance array, when it's OK
+        index++;
+    }
+    else {
+      fnFinal();
+      clearInterval(intervalId);
+    }
+  }, timeout);
+}
+function remove() {
+  if (localStorage[localStorageKey]) {
+    delete localStorage[localStorageKey];
+    return true;
+  }
+  return false;
+}
+
+function tell(text) {
+  tellbuf.push(text);
+}
+function speakTellings() {
+  var tellings = '\t'+tellbuf.join('\r\n\t');
+  tellbuf = [];
+  return tellings;
+
+}
 // Synonyms for our verbs...
-function north() {
- return North(); // *** HINT *** use 'north()', not just 'north' as a command.
+function RegisterCommands(fnCommand, synonyms, hasSetter/*no load/save support for setter*/) {
+  var evaluate = function(cmd, args) {
+    if (busy) {
+      if (busy=='won') {
+        if (!/help|reset/i.test(cmd)) return "You've already won, type [reset] to play again.";
+      }
+      else if (busy=='dead') return "You're dead. Please wait before you will be reincarnated.";
+      else return "I'm busy, please wait patiently...";
+    }
+    cmdHistory.push(cmd);
+    fnCommand.apply(this, args);
+    return speakTellings();
+  }
+  synonyms.split(',').forEach(function(cmd) {
+    if (cmd in exports)
+      console.error("%cCommand %s is already defined", "font-size:150%;color:red;font-weight:bold", cmd, fnCommand);
+    else {
+      var obj = { get:function() { //HEY! No peaking!
+        return evaluate(cmd, arguments)
+      }};
+      if (hasSetter) obj.set = function() {
+        c(evaluate(cmd, arguments));
+      };
+      Object.defineProperty(exports, cmd, obj);
+    }
+  }); 
 }
-function N() {
- return North(); // *** HINT *** use 'N()', not just 'N' as a command.
-}
-function n() {
- return North(); // *** HINT *** use 'n()', not just 'n' as a command.
-}
-function south() {
- return South(); // *** HINT *** use 'south()', not just 'south' as a command.
-}
-function S() {
- return South(); // *** HINT *** use 'S()', not just 'S' as a command.
-}
-function s() {
- return South(); // *** HINT *** use 's()', not just 's' as a command.
-}
-function west() {
- return West(); // *** HINT *** use 'west()', not just 'west' as a command.
-}
-function W() {
- return West(); // *** HINT *** use 'W()', not just 'W' as a command.
-}
-function w() {
- return West(); // *** HINT *** use 'w()', not just 'w' as a command.
-}
-function east() {
- return East(); // *** HINT *** use 'east()', not just 'east' as a command.
-}
-function E() {
- return east(); // *** HINT *** use 'E()', not just 'e' as a command.
-}
-function e() {
- return East(); // *** HINT *** use 'e()', not just 'e' as a command.
-}
-function enter() {
- return Enter(); // *** HINT *** use 'enter()', not just 'enter' as a command.
-}
-function en() {
- return Enter(); // *** HINT *** use 'en()', not just 'en' as a command.
-}
-function En() {
- return Enter(); // *** HINT *** use 'En()', not just 'En' as a command.
-}
-function ent() {
- return Enter(); // *** HINT *** use 'ent()', not just 'ent' as a command.
-}
-function Ent() {
- return Enter(); // *** HINT *** use 'Ent()', not just 'Ent' as a command.
-}
-function L() {
- return Look(); // *** HINT *** use 'L()', not just 'L' as a command.
-}
-function l() {
- return Look(); // *** HINT *** use 'l()', not just 'l' as a command.
-}
-function look() {
- return Look(); // *** HINT *** use 'look()', not just 'look' as a command.
-}
-function T() {
- return Take(); // *** HINT *** use 'T()', not just 'T' as a command.
-}
-function t() {
- return Take(); // *** HINT *** use 't()', not just 't' as a command.
-}
-function take() {
- return Take(); // *** HINT *** use 'take()', not just 'take' as a command.
-}
-function U() {
- return Use(); // *** HINT *** use 'U()', not just 'U' as a command.
-}
-function u() {
- return Use(); // *** HINT *** use 'u()', not just 'u' as a command.
-}
-function use() {
- return Use(); // *** HINT *** use 'use()', not just 'use' as a command.
-}
-function SP() {
- return Speak(); // *** HINT *** use 'SP()', not just 'SP' as a command.
-}
-function sp() {
- return Speak(); // *** HINT *** use 'sp()', not just 'sp' as a command.
-}
-function Sp() {
- return Speak(); // *** HINT *** use 'Sp()', not just 'Sp' as a command.
-}
-function speak() {
- return Speak(); // *** HINT *** use 'speak()', not just 'speak' as a command.
-}
-function I() {
- return Inventory(); // *** HINT *** use 'I()', not just 'I' as a command.
-}
-function i() {
- return Inventory(); // *** HINT *** use 'i()', not just 'i' as a command.
-}
-function Inv() {
- return Inventory(); // *** HINT *** use 'Inv()', not just 'Inv' as a command.
-}
-function inv() {
- return Inventory(); // *** HINT *** use 'inv()', not just 'inv' as a command.
-}
-function inventory() {
- return Inventory(); // *** HINT *** use 'inventory()', not just 'inventory' as a command.
-}
-function M() {
- return Me(); // *** HINT *** use 'M()', not just 'M' as a command.
-}
-function m() {
- return Me(); // *** HINT *** use 'm()', not just 'm' as a command.
-}
-function me() {
- return Me(); // *** HINT *** use 'me()', not just 'me' as a command.
-}
-function F() {
- return Fight(); // *** HINT *** use 'F()', not just 'F' as a command.
-}
-function f() {
- return Fight(); // *** HINT *** use 'f()', not just 'f' as a command.
-}
-function fight() {
- return Fight(); // *** HINT *** use 'fight()', not just 'fight' as a command.
-}
-function U() { 
- return Up(); // *** HINT *** use 'U()', not just 'U' as a command.
-}
-function u() { 
- return Up(); // *** HINT *** use 'u()', not just 'u' as a command.
-}
-function up() { 
- return Up(); // *** HINT *** use 'up()', not just 'up' as a command.
-}
-function EAT() { 
- return Eat(); // *** HINT *** use 'EAT()', not just 'EAT' as a command.
-}
-function eat() { 
- return Eat(); // *** HINT *** use 'eat()', not just 'eat' as a command.
-}
-function me() { 
- return Me(); // *** HINT *** use 'me()', not just 'me' as a command.
-}
-function m() { 
- return Me(); // *** HINT *** use 'm()', not just 'm' as a command.
-}
-function M() { 
- return Me(); // *** HINT *** use 'M()', not just 'M' as a command.
-}
-function help() { 
- return Help(); // *** HINT *** use 'help()', not just 'help' as a command.
-}
-function h() { 
- return Help(); // *** HINT *** use 'h()', not just 'h' as a command.
-}
-function H() { 
- return Help(); // *** HINT *** use 'H()', not just 'H' as a command.
-}
-function HELP() { 
- return Help(); // *** HINT *** use 'HELP()', not just 'HELP' as a command.
-}
+RegisterCommands(North,    'North,north,N,n');
+RegisterCommands(South,    'South,south,S,s');
+RegisterCommands(West,     'West,west,W,w');
+RegisterCommands(East,     'East,east,E,e');
+RegisterCommands(Enter,    'Enter,enter,Ent,ent');
+RegisterCommands(Look,     'Look,look,L,l');
+RegisterCommands(Take,     'Take,take,T,t');
+RegisterCommands(Use,      'Use,use,U,u');
+RegisterCommands(Speak,    'Speak,speak,Sp,sp,SP');
+RegisterCommands(Inventory,'Inventory,inventory,Inv,inv,I,i');
+RegisterCommands(Me,       'Me,me,M,m');
+RegisterCommands(Fight,    'Fight,fight,F,f');
+RegisterCommands(Up,       'Up,up');
+RegisterCommands(Eat,      'Eat,eat,EAT');
+RegisterCommands(Help,     'Help,help,HELP,H,h', true);
+RegisterCommands(Reset,    'Reset,reset');
+RegisterCommands(Save,     'Save,save');
+RegisterCommands(Load,     'Load,load', true);
+RegisterCommands(Remove,   'Remove,remove');
 
 // VERBS!!!
-function Help() {
-  return "General commands are: n(), s(), e(), w() for North, South, East, West, also:\r\nl() for Look, t() for Take, u() for Use,\r\nsp() for Speak, i() for Inventory, me() for player state, f() for fight.\r\nAnd h() for Help.\r\nFor *special* cheats, press Ctrl-F4.";
+function Help(value) {
+  tell('General commands are (without the []): [n], [s], [e], [w] for [North], [South], [East], [West].');
+  tell('Also: [l] for [Look], [t] for [Take], [u] for [Use], [sp] for [Speak], [Eat], [i] for [Inventory],');
+  tell('[Me] for player state, [f] for [Fight] and [h] for [Help]. You can also [Reset], [Save]');
+  tell('and [Load] or [Remove] a game. For *special* cheats, press Ctrl-F4/Cmd-W.');
+  if (value)
+    tell("The super special secret cheats are [Load = 2000] for the demo or [Load = -2000] for full demo");
+  else
+    tell("For secrets, try redefine help somehow.");
 }
 
 function Eat() {
   if (playerState.hunger <= 0) {
-    return "You are not hungry.";
+    return tell("You are not hungry.");
   }
   if (playerInventory.food <= 0) {
-    return "You have no food.";
+    return tell("You have no food.");
   }
   
   playerInventory.food -= 1;
   playerState.hunger -= 1;  
-  return "You eat a little food.";
+  tell("You eat a little food.");
 }
 
-function Look(){ // HEY! No peaking!
-  return __look();  
-}
-function __look() {  
-  c(say());
+function Look() {  
+  say();
   var cell = maps[mapnum][here[1]][here[0]];
   //c(cell);
   switch(cell) {
     
-	case "H" : return "The house is weathered, and appears abandoned. The front door is partially off its hinges. You could easily Enter().";
-	case "V" : return "Cool air blows from the cave. The entrance is large enough that you can Enter(). You can move " + Possibilities();
-	case "2" : return "There is a rope you can climb Up(). It looks sturdy enough to hold your weight.";	
-    case "k" : return "This kitchen contains one of those fancy Magic Amulet Receptacle Devices. You could try to Use() it, I guess.";	
+	case "H" : return tell("The house is weathered, and appears abandoned. The front door is partially off its hinges."),tell("You could easily [Enter].");
+	case "V" : return tell("Cool air blows from the cave. The entrance is large enough that you can [Enter]. You can move " + Possibilities());
+	case "2" : return tell("There is a rope you can climb [Up]. It looks sturdy enough to hold your weight.");	
+    case "k" : return tell("This kitchen contains one of those fancy Magic Amulet Receptacle Devices."),tell("You could try to [Use] it, I guess.");	
     case "r" : 
     {
-        c("The room contains a bath, a sink, and a toilet that runs continuously.");
-        c("There is a small window above the toilet. You step up onto the toilet seat,");
-        c("to get a better view through the window. Yes, you can see the outside world,");
-        c("and also... suddenly you fall through the window, landing on the ground outside.");
-        c("You walk around the house until you find the front door.");
-        here = [11,5];
-        mapnum = 0;
-        return say();	
+      act(1000, 
+      [ "The room contains a bath, a sink, and a toilet that runs continuously."
+      , "There is a small window above the toilet. You step up onto the toilet seat,"
+      , "to get a better view through the window. Yes, you can see the outside world,"
+      , "and also... suddenly you fall through the window, landing on the ground outside."
+      , "You walk around the house until you find the front door."
+      , function() {
+          here = [11,5];
+          mapnum = 0;
+          say();
+          return speakTellings();
+        } 
+      ]);
     }
-    default : return "You see nothing else.";
+    default : return tell("You see nothing else.");
   }
-  return "";
 }
-function Take(){ //HEY! No peaking!
-  return __take();
-}
-function __take(){
-  message = "There is nothing to take."
+function Take(){
   var cell = maps[mapnum][here[1]][here[0]];
   //c(cell);
   switch(cell) {
     case "E" : {
        if (amulet == true) {
-         message = "You pick up the amulet.";
          amulet = false;
          playerInventory.amulet = 1;
+         return tell("You pick up the amulet.");
         }
     }
     case "3" : {
        if (gold == true) {
-         message = "You take every last piece of gold.";
          gold = false;
          playerInventory.gold = 100;
+         return tell("You take every last piece of gold.");
        }
     }
+    default: tell("There is nothing to take.");
   }
-  
-  return message;
 }
-function Use(x){  //Hey! No peaking!
- return __use(x);
-}
-function __use(x) {
-  message = "You can't use that here.";
+function Use(x) {
   var cell = maps[mapnum][here[1]][here[0]];
   //c(cell);
   switch(cell) {
@@ -393,42 +364,58 @@ function __use(x) {
         if (playerInventory.amulet == 1) {
           win(0);
           //init();
-          return "click.";
+          return tell("click.");
         } else {
-          message = "It's not clear how to use this Magic Amulet Receptacle Device. Perhaps it requires a magic amulet. But where would we get one of those?";
+          tell("It's not clear how to use this Magic Amulet Receptacle Device. Perhaps it requires a magic amulet. But where would we get one of those?");
         }
     }
+    default: tell("You can't use that here.");
   }  
-  return message;
 }
-function reset() {
- console.clear();
- document.body.style.background = "#FFF";
- document.body.innerHTML ="";
- init();
- 
- return say();
+function Save() {
+  save();
+  tell("You gameplay has been saved.");
+}
+function Load(value) {
+  if (value) {
+    var timeout = +value || 2000;
+    if (timeout > 0) timedLoad(timeout, 'n,n,e,e,e,e,e,t,w,w,w,w,w,s,s,e,e,ent,w,w,w,n,l,u'.split(','));
+    else timedLoad(-timeout, 'eat,w,w,sp,e,e,s,s,l,ent,w,w,n,t,inv,s,e,e,n,l,up,n,n,n,n,w,w,w,w,w,n,w,w,s,s,f,n,n,e,e,n,e,e,e,e,e,e,e,s,e,e,s,t,inv,s,w,w,n,w,w,w,s,s,e,e,l,ent,w,n,l,ent,w,w,w,s,n,w,e,n,l,me,use'.split(','));
+    return;
+  }
+  return load() ? say() : tell("You never seem to have saved your gameplay, Mister!");
+}
+function Remove() {
+  return tell(remove() ? "The saved game has been deleted." : "You never seem to have saved your gameplay, Mister!");
+}
+function Reset() {
+  console.clear();
+  document.body.style.background = "#FFF";
+  document.body.innerHTML ="";
+  init();
+  say();
 }
 function win(n) {
+  busy = 'won';
   switch(n) {
-    case 0 : c("You take out the amulet and place it in the Magic Amulet Receptacle Device."); break;
-    case 1 : c("It begins to hum."); break;
-    case 2 : c("Sparks!"); break;
-    case 3 : c("A bolt of lightning!"); break;
-    case 4 : c("Magic energy lifts you from the floor..."); break;
-    case 5 : c("Suddenly, everything goes dark."); break;
-    case 6 : console.log('%c Oh my heavens! You look up and see a new world.', 'background: #222; color: #bada55'); break;
-    case 7 : console.log('%c You realize at once that everything you have experienced is a mere shadow of the true world.', 'background: #222; color: #bada55'); break;
-    case 8 : console.log('%c You\'ve labored in a phantom world, fleeting and unreal, while the real world of ideas, far more powerful and permanent than your own, was right there all along, hovering above you.', 'background: #222; color: #bada55'); break;
-    case 9 : console.log('%c You turn to the world above you, and contemplate it\'s majesty.', 'background: #222; color: #bada55'); break;
+    case 0 : c("\tYou take out the amulet and place it in the Magic Amulet Receptacle Device."); break;
+    case 1 : c("\tIt begins to hum."); break;
+    case 2 : c("\tSparks!"); break;
+    case 3 : c("\tA bolt of lightning!"); break;
+    case 4 : c("\tMagic energy lifts you from the floor..."); break;
+    case 5 : c("\tSuddenly, everything goes dark."); break;
+    case 6 : console.log('%c\t Oh my heavens! You look up and see a new world.', 'background: #222; color: #bada55'); break;
+    case 7 : console.log('%c\t You realize at once that everything you have experienced is a mere shadow of the true world.', 'background: #222; color: #bada55'); break;
+    case 8 : console.log('%c\t You\'ve labored in a phantom world, fleeting and unreal, while the real world of ideas,\r\n\t far more powerful and permanent than your own, was right there all along, hovering above you.', 'background: #222; color: #bada55'); break;
+    case 9 : console.log('%c\t You turn to the world above you, and contemplate it\'s majesty.', 'background: #222; color: #bada55'); break;
     case 10 : break; //pause for a beat.
     case 11 : {document.body.style.background = "#FF00FF";
               var message = "";
               if (movecount < 20) {
-                message = " (with only a little bit of cheating)";
+                message = " (with only a little bit of cheating, very clever, how did you do that?)";
               }
-              document.body.innerHTML = '<div class="win">You won in ' + movecount + ' moves.' + message + '</div><p><code>reset()</code> to play again.</p>';
-            init();} break;
+              document.body.innerHTML = '<div class="win">You won in ' + movecount + ' moves.' + message + '</div><p><code>[reset]</code> to play again.</p>';
+              } break;
   }
   if (n < 11) {
     setTimeout(function(){ win(n+1); }, 2000);        
@@ -438,18 +425,17 @@ function win(n) {
   }
 }
 function Fight(){
- return "You punch wildly at the air. Exhausted, you sit down.";
+ tell("You punch wildly at the air. Exhausted, you sit down.");
 }
 function Speak(){
- return "You talk. Nobody listens.";
+ tell("You talk. Nobody listens.");
 }
 function Inventory() {
- cj(playerInventory);
+  cj(playerInventory);
 }
 function Me() {
- cj(playerState);
+  cj(playerState);
 }
-var playerInventory = {};
 //Note, ensure each map has a border of dots (this makes game logic simpler)
 var maps = [[   
 "...................", //0 (Starting map!)
@@ -475,110 +461,129 @@ var maps = [[
 ".4100..", //2
 "......."]] //3
 
-var here = [9,5]; //x,y
-var mapnum = 0;
-
-function move(x,y) { // Hey! No peaking!
- if ((here[0] + x < 0)||(here[0] + x > maps[mapnum][0].length)) return "the edge of the world has been reached.";
- if ((here[1] + y < 0)||(here[1] + y > maps[mapnum].length)) return "the edge of the world has been reached.";
- if (maps[mapnum][here[1]+y][here[0]+x] == ".") return "the way is blocked";
+function move(x,y) {
+ if ((here[0] + x < 0)||(here[0] + x > maps[mapnum][0].length)) return tell("the edge of the world has been reached.");
+ if ((here[1] + y < 0)||(here[1] + y > maps[mapnum].length)) return tell("the edge of the world has been reached.");
+ if (maps[mapnum][here[1]+y][here[0]+x] == ".") return tell("the way is blocked");
  movecount++;
  here[0]+=x;
  here[1]+=y;
  return say(); 
 }
-var amulet=true;
-var gold=true;
 function elfhut() {
-  message = "A clearing in the forest, with an abandoned elf hut.";
+  tell("A clearing in the forest, with an abandoned elf hut.");
   if (amulet == true) {
-    message += "\r\nAn amulet lies on the floor.";
+    tell("An amulet lies on the floor.");
   }
-  return message;
 }
 function horde() {
-  message = "An empty cavern.";
   if (gold == true) {
-    message = "There is a horde of treasure. Gold coins, goblets, trinkets.";
+    tell("There is a horde of treasure. Gold coins, goblets, trinkets.");
+  } else {
+    tell("An empty cavern.")
   }
-  return message;
+}
+function stepTell(stepMs, lines) {
+  var lineIndex = 0
+  ,   stepId = setInterval(function() {
+    var line = lines[lineIndex];
+    if (typeof line=='function') line = line();
+    if (line !== null) c('\t'+line.replace(/^\t+/,''));
+    lineIndex++;
+    if (lineIndex == lines.length) clearInterval(stepId);
+  }, stepMs); 
+}
+function act(stepMs,lines) {
+  busy = 'yes';
+  lines.push(function() { 
+    busy = false; 
+    return null;
+  });
+  stepTell(stepMs,lines);
+}
+function die(stepMs,lines) {
+  busy = 'dead';
+  lines.push(function() {
+    console.error("\r\n\t G A M E  O V E R \r\n\t");
+    init(); 
+    say();
+    return speakTellings();
+  });
+  stepTell(stepMs,lines);
+}
+
+function repeat(str,num) {
+  return new Array(num+1).join(str);
 }
 function say() {
   var cell = maps[mapnum][here[1]][here[0]];
   switch(cell) {
-    case "T" : return "You are in a town square. Paths lead to the " + Possibilities() + ".";
-	case "P" : return "You walk carefully along the path. You can move " + Possibilities() + ".";
-	case "H" : return "There is a house.";
-	case "F" : return "A spooky forest. You can proceed " + Possibilities() + ".";
-  	case "f" : return "The forest is so thick, you don't know what directions are possible.";
+    case "T" : return tell("You are in a town square. Paths lead to the " + Possibilities() + ".");
+    case "P" : return tell("You walk carefully along the path. You can move " + Possibilities() + ".");
+    case "H" : return tell("There is a house.");
+    case "F" : return tell("A spooky forest. You can proceed " + Possibilities() + ".");
+    case "f" : return tell("The forest is so thick, you don't know what directions are possible.");
     case "E" : return elfhut();
-    case "W" : return "A stream with a waterfall blocks your way. It is teeming with fish.";
-	case "C" : return "You are standing on a cliff by the sea. Seagulls are squawking.";
-	case "V" : return "The entrance to a cave. Chills run up and down your spine.";
-	case "k" : return "You are in a kitchen. You can move " + Possibilities() + ".";
-	case "h" : return "You are in a hallway. You can move " + Possibilities() + ".";
-	case "r" : return "You are in a bedroom. You can move " + Possibilities() + ".";
-	case "b" : return "You are in a bathroom. You can move " + Possibilities() + ".";
-	case "y" : return "You are in a foyer. You can move " + Possibilities() + ".";
-	case "a" : return "Stairs lead up to an attic. You can move Up(), " + Possibilities() + ".";
-	case "0" : return "You are in a deep dark tunnel. Feeling with your fingers you find you can move " + Possibilities() + ".";
-	case "1" : return "Somehow it is even darker here. You feel yourself going cray cray. The one thing you still have is your sense of direction. You can move " + Possibilities() + ".";
-	case "2" : return "You are in a wide open cavern. Bones litter the floor. You can move " + Possibilities() + ".";
-	case "3" : return horde();
-	case "4" :  { c("A bottomless pit. You fall forever.");console.error("\r\n G A M E  O V E R");init(); c(say()); return "";}
-    default : return "You are in a place i do not recognize.";
+    case "W" : return tell("A stream with a waterfall blocks your way. It is teeming with fish.");
+    case "C" : return tell("You are standing on a cliff by the sea. Seagulls are squawking.");
+    case "V" : return tell("The entrance to a cave. Chills run up and down your spine.");
+    case "k" : return tell("You are in a kitchen. You can move " + Possibilities() + ".");
+    case "h" : return tell("You are in a hallway. You can move " + Possibilities() + ".");
+    case "r" : return tell("You are in a bedroom. You can move " + Possibilities() + ".");
+    case "b" : return tell("You are in a bathroom. You can move " + Possibilities() + ".");
+    case "y" : return tell("You are in a foyer. You can move " + Possibilities() + ".");
+    case "a" : return tell("Stairs lead up to an attic. You can move [Up], " + Possibilities() + ".");
+    case "0" : return tell("You are in a deep dark tunnel. Feeling with your fingers you find you can move " + Possibilities() + ".");
+    case "1" : return tell("Somehow it is even darker here. You feel yourself going cray cray."),tell("The one thing you still have is your sense of direction. You can move " + Possibilities() + ".");
+    case "2" : return tell("You are in a wide open cavern. Bones litter the floor. You can move " + Possibilities() + ".");
+    case "3" : return horde();
+    case "4" : return die(250,'You fall forever.'.split("").map(function(s,i){return repeat(' ',i)+s;})), tell("A bottomless pit.");
+    default  : return tell("You are in a place i do not recognize.");
   }
-  return "";
 }
 
-function Up() { // Hey! No peaking!
-  return __up();
-}
-function __up() { 
- var cell = maps[mapnum][here[1]][here[0]];
- if (cell == 'a') {
-    c("You begin to climb the stairs. There is a creaking noise. The stairs collapse. The entire house falls on top of you.");console.error("\r\n G A M E  O V E R");init(); c(say()); return "";
+function Up() { 
+  var cell = maps[mapnum][here[1]][here[0]];
+  if (cell == 'a') {
+    die(1000,['There is a creaking noise.','The stairs collapse.','The entire house falls on top of you.']);
+    return tell("You begin to climb the stairs.");
  } else  if (mapnum ==2 && cell == '2') {
-	mapnum = 0;
-	here = [9,7];
-    c("Slowly you climb the rope. It creaks and threatens to snap. Eventually you've hauled yourself to the surface.");
-	c("Stepping around a large boulder you find...");
-	return say();
- } else return "You cannot do that here.";
- 
+    mapnum = 0;
+    here = [9,7];
+    tell("Slowly you climb the rope. It creaks and threatens to snap. Eventually you've hauled yourself to the surface.");
+    tell("Stepping around a large boulder you find...");
+    return say();
+ } else return tell("You cannot do that here.");
 }
 
-function Enter() { // Hey! No peaking!
- return __enter();
-}
-
-function __enter() {
+function Enter() {
  var cell = maps[mapnum][here[1]][here[0]];
  
   switch(cell) {
     case "H" : {
 			mapnum = 1;
-			c("You push the door open and step inside.");
+			tell("You push the door open and step inside.");
 			here = [5,2];
 			return say();
 		}
     case "V" : {
 			mapnum = 2;
-			c("You walk slowly inside... you fall a short distance, it is too far to climb back up. It is pitch black. You are likely to be eaten by a grue.");
+			tell("You walk slowly inside... you fall a short distance, it is too far to climb back up.");
+      tell("It is pitch black. You are likely to be eaten by a grue.");
 			here = [4,2];
 			return say();
 		}
-    default : return "That is not possible here.";
+    default : return tell("That is not possible here.");
   }
   return "";
 }
 
 function Possibilities() {
   var poss = [];
-  if (maps[mapnum][here[1]-1][here[0]] != ".") poss[poss.length] = "North()";
-  if (maps[mapnum][here[1]+1][here[0]] != ".") poss[poss.length] = "South()";
-  if (maps[mapnum][here[1]][here[0]+1] != ".") poss[poss.length] = "East()";
-  if (maps[mapnum][here[1]][here[0]-1] != ".") poss[poss.length] = "West()";
+  if (maps[mapnum][here[1]-1][here[0]] != ".") poss[poss.length] = "[North]";
+  if (maps[mapnum][here[1]+1][here[0]] != ".") poss[poss.length] = "[South]";
+  if (maps[mapnum][here[1]][here[0]+1] != ".") poss[poss.length] = "[East]";
+  if (maps[mapnum][here[1]][here[0]-1] != ".") poss[poss.length] = "[West]";
   return replaceLast(poss.join(", "), ", ", " and "); //sometimes ' or ' would be better... ah well.
 }
 function North() {
@@ -600,19 +605,17 @@ function East() {
 function c(s) {
  console.log(s);
 }
-function cls() {
- console.clear();
-}
-
 function cj(o) {
-c(JSON.stringify(o, null, "\t"));
-return "";
+  tell(JSON.stringify(o, null, "\t").replace(/"|\{(\r\n|\r|\n)\t|\}/g, ''));
 }
 
 function replaceLast(x, what, replacement) {
     return x.split("").reverse().join("").replace(new RegExp(what.split("").reverse().join("")), replacement.split("").reverse().join("")).split("").reverse().join("");
 };
 start();
+
+/***/ })(window); /** IIFE end*****************************************************************************************************/
+
 </script>
 <style>
 .hidden { color:white}
